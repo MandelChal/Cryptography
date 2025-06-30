@@ -47,6 +47,7 @@ public class SecureClient extends JFrame {
     private static final String SERVER_HOST = "localhost";
     private static final int SERVER_PORT = 8080;
     
+    // GUI components
     private JTextArea logArea;
     private JComboBox<String> asymmetricCombo;
     private JComboBox<String> symmetricCombo;
@@ -65,6 +66,7 @@ public class SecureClient extends JFrame {
         log("🟢 Client initialized and ready to connect");
     }
     
+    // Initialize GUI components
     private void initializeGUI() {
         setTitle("🔒 Secure Client - Cryptography Exercise");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -83,6 +85,7 @@ public class SecureClient extends JFrame {
         add(bottomPanel, BorderLayout.SOUTH);
     }
     
+    // Create configuration panel with connection options
     private JPanel createConfigurationPanel() {
         JPanel panel = new JPanel(new BorderLayout());
         panel.setBorder(BorderFactory.createTitledBorder("🔧 Configuration & Connection"));
@@ -114,7 +117,7 @@ public class SecureClient extends JFrame {
         configPanel.add(new JLabel("🔐 Asymmetric Encryption:"), gbc);
         
         gbc.gridx = 1; gbc.gridy = 1;
-        asymmetricCombo = new JComboBox<>(new String[]{"RSA", "ElGamal"});
+        asymmetricCombo = new JComboBox<>(new String[]{"RSA"});
         asymmetricCombo.setToolTipText("Choose asymmetric encryption algorithm");
         configPanel.add(asymmetricCombo, gbc);
         
@@ -159,7 +162,7 @@ public class SecureClient extends JFrame {
         
         return panel;
     }
-    
+    // Create log panel to display communication logs
     private JPanel createLogPanel() {
         JPanel panel = new JPanel(new BorderLayout());
         panel.setBorder(BorderFactory.createTitledBorder("📋 Communication Log"));
@@ -183,7 +186,8 @@ public class SecureClient extends JFrame {
         
         return panel;
     }
-    
+
+    // Create image panel to display received images
     private JPanel createImagePanel() {
         JPanel panel = new JPanel(new BorderLayout());
         panel.setBorder(BorderFactory.createTitledBorder("🖼️ Received Images"));
@@ -199,6 +203,7 @@ public class SecureClient extends JFrame {
         return panel;
     }
     
+    // Connect to the server and perform the secure communication steps
     private void connectToServer() {
         connectButton.setEnabled(false);
         updateStatus("Connecting...", Color.ORANGE, 10);
@@ -206,6 +211,7 @@ public class SecureClient extends JFrame {
         new Thread(this::performConnection).start();
     }
     
+    // Perform the secure connection steps
     private void performConnection() {
         try (Socket socket = new Socket(SERVER_HOST, SERVER_PORT);
              BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
@@ -251,7 +257,7 @@ public class SecureClient extends JFrame {
             updateStatus("AES key generated", Color.GREEN, 60);
             
             // Step 6: Encrypt and send AES key
-            String encryptedAESKey = encryptAESKey(aesKey, serverPublicKey, asymmetric);
+            String encryptedAESKey = encryptAESKey(aesKey, serverPublicKey);
             out.println(encryptedAESKey);
             log("📤 Encrypted AES key sent to server (" + encryptedAESKey.length() + " chars)");
             updateStatus("AES key sent", Color.GREEN, 70);
@@ -295,7 +301,8 @@ public class SecureClient extends JFrame {
             });
         }
     }
-    
+
+    // Verify the server's certificate
     private boolean verifyCertificate(String certificateData) {
         try {
             log("🔍 Starting certificate verification...");
@@ -351,6 +358,7 @@ public class SecureClient extends JFrame {
         }
     }
     
+    // Parse certificate data into a map of fields
     private Map<String, String> parseCertificate(String certificateData) {
         Map<String, String> fields = new HashMap<>();
         String[] pairs = certificateData.split("\\|");
@@ -365,6 +373,7 @@ public class SecureClient extends JFrame {
         return fields;
     }
     
+    // Extract the public key from the certificate data
     private PublicKey extractPublicKeyFromCertificate(String certificateData) throws Exception {
         Map<String, String> certFields = parseCertificate(certificateData);
         String publicKeyBase64 = certFields.get("public_key");
@@ -373,6 +382,7 @@ public class SecureClient extends JFrame {
         return loadPublicKeyFromBase64(publicKeyBase64, algorithm);
     }
     
+    // Load a public key from a Base64-encoded string
     private PublicKey loadPublicKeyFromBase64(String publicKeyBase64, String algorithm) throws Exception {
         try {
             // Clean the Base64 string - remove any whitespace and newlines
@@ -386,8 +396,7 @@ public class SecureClient extends JFrame {
             byte[] publicKeyBytes = Base64.getDecoder().decode(cleanedBase64);
             X509EncodedKeySpec spec = new X509EncodedKeySpec(publicKeyBytes);
             
-            // Handle different algorithms
-            String keyAlgorithm = algorithm.equals("ElGamal") ? "EC" : "RSA";
+            String keyAlgorithm = "RSA";
             KeyFactory keyFactory = KeyFactory.getInstance(keyAlgorithm);
             
             return keyFactory.generatePublic(spec);
@@ -399,6 +408,7 @@ public class SecureClient extends JFrame {
         }
     }
     
+    // Generate a symmetric AES key based on the selected algorithm
     private SecretKey generateAESKey(String symmetric) throws Exception {
         int keySize = symmetric.equals("AES-256") ? 256 : 128;
         KeyGenerator keyGen = KeyGenerator.getInstance("AES");
@@ -406,19 +416,16 @@ public class SecureClient extends JFrame {
         return keyGen.generateKey();
     }
     
-    private String encryptAESKey(SecretKey aesKey, PublicKey serverPublicKey, String asymmetricAlg) throws Exception {
-        if (asymmetricAlg.equals("RSA")) {
-            Cipher cipher = Cipher.getInstance("RSA/ECB/OAEPWITHSHA-1ANDMGF1PADDING");
-            cipher.init(Cipher.ENCRYPT_MODE, serverPublicKey);
-            
-            byte[] encryptedKey = cipher.doFinal(aesKey.getEncoded());
-            return Base64.getEncoder().encodeToString(encryptedKey);
-        } else {
-            // For ElGamal simulation, we'll throw an exception
-            throw new UnsupportedOperationException("ElGamal encryption not fully implemented - please use RSA");
-        }
-    }
-    
+    // Encrypt the AES key using the server's public key
+private String encryptAESKey(SecretKey aesKey, PublicKey serverPublicKey) throws Exception {
+    Cipher cipher = Cipher.getInstance("RSA/ECB/OAEPWITHSHA-1ANDMGF1PADDING");
+    cipher.init(Cipher.ENCRYPT_MODE, serverPublicKey);
+
+    byte[] encryptedKey = cipher.doFinal(aesKey.getEncoded());
+    return Base64.getEncoder().encodeToString(encryptedKey);
+}
+
+    // Encrypt a message using the AES key
     private String encryptMessage(String message, SecretKey aesKey) throws Exception {
         Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
         cipher.init(Cipher.ENCRYPT_MODE, aesKey);
@@ -434,6 +441,7 @@ public class SecureClient extends JFrame {
         return Base64.getEncoder().encodeToString(combined);
     }
     
+    // Decrypt a message using the AES key
     private String decryptMessage(String encryptedMessage, SecretKey aesKey) throws Exception {
         byte[] combined = Base64.getDecoder().decode(encryptedMessage);
         
@@ -450,6 +458,7 @@ public class SecureClient extends JFrame {
         return new String(decrypted, "UTF-8");
     }
     
+    // Receive images from the server
     private void receiveImages(BufferedReader in, SecretKey aesKey) throws Exception {
         log("📊 Receiving image count...");
         
@@ -482,7 +491,7 @@ public class SecureClient extends JFrame {
                 log("❌ Invalid image format for image " + (i + 1));
             }
         }
-        
+        // Update the image panel after all images are processed
         SwingUtilities.invokeLater(() -> {
             imagePanel.revalidate();
             imagePanel.repaint();
@@ -491,6 +500,7 @@ public class SecureClient extends JFrame {
         log("🎉 All " + imageCount + " images received and displayed successfully!");
     }
     
+    // Display an image in the GUI
     private void displayImage(String imageData, String imageName, int imageNumber) {
         SwingUtilities.invokeLater(() -> {
             try {
@@ -551,6 +561,7 @@ public class SecureClient extends JFrame {
         });
     }
     
+    // Create a placeholder for images that failed to load
     private void createErrorPlaceholder(String imageName, String errorType) {
         JPanel errorContainer = new JPanel(new BorderLayout());
         errorContainer.setBorder(BorderFactory.createLineBorder(Color.RED, 2));
@@ -565,6 +576,7 @@ public class SecureClient extends JFrame {
         imagePanel.add(errorContainer);
     }
     
+    // Update the status label and progress bar
     private void updateStatus(String message, Color color, int progress) {
         SwingUtilities.invokeLater(() -> {
             statusLabel.setText("🔄 Status: " + message);
@@ -574,6 +586,7 @@ public class SecureClient extends JFrame {
         });
     }
     
+    // Log messages to the text area with timestamp
     private void log(String message) {
         SwingUtilities.invokeLater(() -> {
             String timestamp = new java.text.SimpleDateFormat("HH:mm:ss.SSS").format(new Date());
@@ -582,6 +595,7 @@ public class SecureClient extends JFrame {
         });
     }
     
+    // Main method to start the client application
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
             new SecureClient().setVisible(true);

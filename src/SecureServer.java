@@ -1,40 +1,66 @@
-import java.awt.*;
-import java.io.*;
-import java.net.*;
-import java.security.*;
-import java.security.spec.ECGenParameterSpec;
-import java.util.*;
-import javax.crypto.*;
+import java.awt.BasicStroke;
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Dimension;
+import java.awt.FlowLayout;
+import java.awt.Font;
+import java.awt.GradientPaint;
+import java.awt.Graphics2D;
+import java.awt.GridLayout;
+import java.awt.image.BufferedImage;
+import java.io.BufferedReader;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
+import java.security.MessageDigest;
+import java.security.PublicKey;
+import java.security.Signature;
+import java.util.Base64;
+import java.util.Date;
+
+import javax.crypto.Cipher;
+import javax.crypto.SecretKey;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
-import javax.swing.*;
-import java.awt.image.BufferedImage;
 import javax.imageio.ImageIO;
+import javax.swing.BorderFactory;
+import javax.swing.JButton;
+import javax.swing.JDialog;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JTextArea;
+import javax.swing.SwingUtilities;
 
 public class SecureServer extends JFrame {
     private static final int PORT = 8080;
     private static final String VALID_USERNAME = "admin";
-    private static final String VALID_PASSWORD = "password123";
+    private static final String VALID_PASSWORD = "password123"; // Example credentials
     
-    private JTextArea logArea;
-    private JLabel statusLabel;
-    private ServerSocket serverSocket;
-    private boolean isRunning = false;
+    private JTextArea logArea; // Text area for logging server activity
+    private JLabel statusLabel; // Label to show server status
+    private ServerSocket serverSocket; // Server socket for accepting client connections
+    private boolean isRunning = false; // Flag to track server status
     
-    // Certificate Authority keys (simulated)
-    private KeyPair caKeyPair;
+    private KeyPair caKeyPair; // CA key pair
+    private KeyPair rsaKeyPair; // Using RSA for asymmetric encryption
     
-    // Server keys for different algorithms
-    private KeyPair rsaKeyPair;
-    private KeyPair elGamalKeyPair; // Using ECC as ElGamal simulation
-    
+    // construc
     public SecureServer() {
         initializeGUI();
         generateKeys();
     }
     
+    // Initialize the GUI components
     private void initializeGUI() {
-        setTitle("🔒 Secure Server - Cryptography Exercise");
+        setTitle("🔒 Secure Server - Cryptography Exercise"); 
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setSize(900, 700);
         setLocationRelativeTo(null);
@@ -94,13 +120,14 @@ public class SecureServer extends JFrame {
         add(controlPanel, BorderLayout.SOUTH);
     }
     
+    // Generate cryptographic keys for CA and server
     private void generateKeys() {
         try {
             log("🔧 Generating cryptographic keys...");
             
             // Generate CA key pair (for certificate signing)
             KeyPairGenerator caGenerator = KeyPairGenerator.getInstance("RSA");
-            caGenerator.initialize(2048);
+            caGenerator.initialize(2048); 
             caKeyPair = caGenerator.generateKeyPair();
             log("✅ CA key pair generated (RSA 2048-bit)");
             
@@ -109,14 +136,7 @@ public class SecureServer extends JFrame {
             rsaGenerator.initialize(2048);
             rsaKeyPair = rsaGenerator.generateKeyPair();
             log("✅ Server RSA key pair generated (2048-bit)");
-            
-            // Generate ECC key pair for ElGamal simulation
-            KeyPairGenerator eccGenerator = KeyPairGenerator.getInstance("EC");
-            ECGenParameterSpec ecSpec = new ECGenParameterSpec("secp256r1");
-            eccGenerator.initialize(ecSpec);
-            elGamalKeyPair = eccGenerator.generateKeyPair();
-            log("✅ ElGamal key pair generated (simulated with ECC P-256)");
-            
+                       
         } catch (Exception e) {
             log("❌ Error generating keys: " + e.getMessage());
             e.printStackTrace();
@@ -292,8 +312,8 @@ public class SecureServer extends JFrame {
         log("📋 Building certificate components...");
         
         // Select appropriate key pair
-        KeyPair serverKeyPair = asymmetricAlg.equals("RSA") ? rsaKeyPair : elGamalKeyPair;
-        
+        KeyPair serverKeyPair = rsaKeyPair;
+
         // Create certificate data (simple format)
         String serverName = "MySecureServer";
         String publicKeyBase64 = Base64.getEncoder().encodeToString(serverKeyPair.getPublic().getEncoded());
@@ -334,9 +354,7 @@ public class SecureServer extends JFrame {
     }
     
     private SecretKey decryptAESKey(String encryptedAESKey, String asymmetricAlg) throws Exception {
-        KeyPair serverKeyPair = asymmetricAlg.equals("RSA") ? rsaKeyPair : elGamalKeyPair;
-        
-        if (asymmetricAlg.equals("RSA")) {
+        KeyPair serverKeyPair = rsaKeyPair;
             Cipher cipher = Cipher.getInstance("RSA/ECB/OAEPWITHSHA-1ANDMGF1PADDING");
             cipher.init(Cipher.DECRYPT_MODE, serverKeyPair.getPrivate());
             
@@ -344,11 +362,7 @@ public class SecureServer extends JFrame {
             byte[] decryptedBytes = cipher.doFinal(encryptedBytes);
             
             return new SecretKeySpec(decryptedBytes, "AES");
-        } else {
-            // For ElGamal simulation with ECC, we'll use ECIES
-            // In a real implementation, you'd use a proper ElGamal library
-            throw new UnsupportedOperationException("ElGamal decryption not fully implemented - use RSA");
-        }
+        
     }
     
     private boolean authenticateUser(String encryptedCredentials, SecretKey aesKey) throws Exception {
